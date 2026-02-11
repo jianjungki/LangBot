@@ -38,6 +38,7 @@ from . import entities as core_entities
 from ..rag.knowledge import kbmgr as rag_mgr
 from ..vector import mgr as vectordb_mgr
 from ..telemetry import telemetry as telemetry_module
+from . import sandbox
 
 
 class Application:
@@ -146,6 +147,8 @@ class Application:
 
     monitoring_service: monitoring_service.MonitoringService = None
 
+    sandbox_mgr: sandbox.SandboxManager = None
+
     def __init__(self):
         pass
 
@@ -181,6 +184,9 @@ class Application:
                 scopes=[core_entities.LifecycleControlScope.APPLICATION],
             )
 
+            # Initialize Sandbox Manager
+            self.sandbox_mgr = sandbox.SandboxManager(self)
+
             self.task_mgr.create_task(
                 never_ending(),
                 name='never-ending-task',
@@ -197,6 +203,8 @@ class Application:
 
     def dispose(self):
         self.plugin_connector.dispose()
+        if self.sandbox_mgr:
+            asyncio.create_task(self.sandbox_mgr.shutdown())
 
     async def print_web_access_info(self):
         """Print access webui tips"""

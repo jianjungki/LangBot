@@ -3,7 +3,8 @@ from __future__ import annotations
 import abc
 import typing
 
-from ..core import app
+if typing.TYPE_CHECKING:
+    from ..core import app
 
 
 preregistered_runners: list[typing.Type[RequestRunner]] = []

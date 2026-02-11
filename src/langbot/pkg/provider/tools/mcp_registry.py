@@ -1,54 +1,48 @@
-"""
-This module implements the loader for MCP tools.
-"""
-
+from typing import Dict, List, Optional, Any
 import requests
-from typing import List, Dict, Any, Optional
 
-from ..entities import LLMTool
+from .entities import LLMTool
 
-class MCPLoader:
-    """
-    A loader for parsing and loading tools from an MCP server.
-    """
-
+class MCPRegistry:
     def __init__(self):
-        pass
+        self.servers: Dict[str, str] = {}  # name -> url
+        self.tools: Dict[str, LLMTool] = {}
 
-    def load_tools_from_server(self, server_url: str) -> List[LLMTool]:
-        """
-        Loads tools from an MCP server and returns a list of LLMTool objects.
-        """
+    def register_server(self, name: str, url: str):
+        self.servers[name] = url
+
+    def load_tools_from_all_servers(self):
+        for name, url in self.servers.items():
+            self.load_tools_from_server(url)
+
+    def load_tools_from_server(self, server_url: str):
         try:
-            # Assuming the MCP server has a /tools endpoint that returns a list of tool definitions
             response = requests.get(f"{server_url}/tools")
             response.raise_for_status()
             tool_definitions = response.json()
             
-            tools = []
             for tool_def in tool_definitions:
                 tool = self._parse_mcp_tool(tool_def)
                 if tool:
-                    tools.append(tool)
-            return tools
+                    self.tools[tool.name] = tool
         except requests.RequestException as e:
             print(f"Error loading tools from MCP server {server_url}: {e}")
-            return []
-        except ValueError: # Catches JSON decoding errors
+        except ValueError:
             print(f"Error parsing JSON from MCP server {server_url}")
-            return []
 
     def _parse_mcp_tool(self, tool_def: Dict[str, Any]) -> Optional[LLMTool]:
-        """
-        Parses a single tool definition from MCP format.
-        This assumes a certain structure for the tool definition.
-        """
         try:
             name = tool_def['name']
-            description = tool_def.get('description') # Use .get for optional field
+            description = tool_def['description']
             parameters = tool_def.get('parameters', {})
             
             return LLMTool(name=name, description=description, parameters=parameters)
         except KeyError as e:
             print(f"Missing required key in MCP tool definition: {e}")
             return None
+
+    def get_tool(self, name: str) -> Optional[LLMTool]:
+        return self.tools.get(name)
+
+    def get_all_tools(self) -> List[LLMTool]:
+        return list(self.tools.values())
